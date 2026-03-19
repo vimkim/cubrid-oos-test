@@ -13,77 +13,13 @@
 # Usage: bash oos_stress_bulk.sh
 #
 
-set -u
-
-# ============================================================================
-# Configuration
-# ============================================================================
-
 DB_NAME="oos_stress_test"
-DB_VOL_PATH="${CUBRID_DATABASES:-/tmp}/${DB_NAME}"
 LOG_FILE="oos_stress_$(date +%Y%m%d_%H%M%S).log"
-PASS_COUNT=0
-FAIL_COUNT=0
+DB_VOL_SIZE="1G"
+DB_LOG_SIZE="512M"
 
-# ============================================================================
-# Helper functions
-# ============================================================================
-
-log_msg() {
-    echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"
-}
-
-run_sql() {
-    csql -u dba "$DB_NAME" -c "$1" 2>&1
-}
-
-assert_contains() {
-    local desc="$1"
-    local expected_substr="$2"
-    local actual="$3"
-
-    if echo "$actual" | grep -q "$expected_substr"; then
-        log_msg "PASS: $desc"
-        PASS_COUNT=$((PASS_COUNT + 1))
-    else
-        log_msg "FAIL: $desc (expected to contain '$expected_substr', got '$actual')"
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-    fi
-}
-
-create_db() {
-    log_msg "Creating database $DB_NAME..."
-    mkdir -p "$DB_VOL_PATH"
-    cubrid createdb --db-volume-size=1G --log-volume-size=512M "$DB_NAME" en_US.utf8 -F "$DB_VOL_PATH" 2>&1 | tee -a "$LOG_FILE"
-}
-
-start_server() {
-    log_msg "Starting server for $DB_NAME..."
-    cubrid server start "$DB_NAME" 2>&1 | tee -a "$LOG_FILE"
-    cubrid broker start 2>&1 | tee -a "$LOG_FILE"
-    sleep 2
-}
-
-stop_server() {
-    log_msg "Stopping server for $DB_NAME..."
-    cubrid broker stop 2>&1 | tee -a "$LOG_FILE"
-    cubrid server stop "$DB_NAME" 2>&1 | tee -a "$LOG_FILE"
-    sleep 1
-}
-
-cleanup_db() {
-    cubrid broker stop 2>/dev/null
-    cubrid server stop "$DB_NAME" 2>/dev/null
-    sleep 1
-    cubrid deletedb "$DB_NAME" 2>/dev/null
-    rm -rf "$DB_VOL_PATH" 2>/dev/null
-    rm -rf "${DB_NAME}"* 2>/dev/null
-    # also remove stale entry from databases.txt if deletedb failed
-    if [ -f "${CUBRID_DATABASES:-/tmp}/databases.txt" ]; then
-        sed -i "/^${DB_NAME}[[:space:]]/d" "${CUBRID_DATABASES:-/tmp}/databases.txt"
-    fi
-    mkdir -p "$DB_VOL_PATH"
-}
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 # ============================================================================
 # TC-01: Bulk INSERT of 1000 OOS records with varying sizes
@@ -465,14 +401,7 @@ main() {
     stop_server
     cleanup_db
 
-    log_msg "======================================"
-    log_msg "Results: PASS=$PASS_COUNT, FAIL=$FAIL_COUNT"
-    log_msg "======================================"
-
-    if [ "$FAIL_COUNT" -gt 0 ]; then
-        exit 1
-    fi
-    exit 0
+    print_results
 }
 
 main "$@"

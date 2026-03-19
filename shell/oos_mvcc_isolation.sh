@@ -13,56 +13,11 @@
 # Usage: bash oos_mvcc_isolation.sh [dbname]
 #
 
-set -u
-
-# ============================================================================
-# Configuration
-# ============================================================================
-
 DB_NAME="${1:-testdb}"
 LOG_FILE="oos_mvcc_isolation_$(date +%Y%m%d_%H%M%S).log"
-PASS_COUNT=0
-FAIL_COUNT=0
 
-# ============================================================================
-# Helper functions
-# ============================================================================
-
-log_msg() {
-    echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"
-}
-
-run_sql() {
-    csql -u dba "$DB_NAME" -c "$1" 2>&1
-}
-
-assert_contains() {
-    local desc="$1"
-    local expected_substr="$2"
-    local actual="$3"
-
-    if echo "$actual" | grep -q "$expected_substr"; then
-        log_msg "PASS: $desc"
-        PASS_COUNT=$((PASS_COUNT + 1))
-    else
-        log_msg "FAIL: $desc (expected to contain '$expected_substr', got '$actual')"
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-    fi
-}
-
-assert_not_contains() {
-    local desc="$1"
-    local unexpected_substr="$2"
-    local actual="$3"
-
-    if echo "$actual" | grep -q "$unexpected_substr"; then
-        log_msg "FAIL: $desc (should NOT contain '$unexpected_substr', but got '$actual')"
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-    else
-        log_msg "PASS: $desc"
-        PASS_COUNT=$((PASS_COUNT + 1))
-    fi
-}
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 # ============================================================================
 # TC-01: Snapshot isolation - concurrent reader does not see uncommitted INSERT
@@ -258,14 +213,7 @@ main() {
     test_snapshot_isolation_delete
     test_concurrent_updates_different_rows
 
-    log_msg "======================================"
-    log_msg "Results: PASS=$PASS_COUNT, FAIL=$FAIL_COUNT"
-    log_msg "======================================"
-
-    if [ "$FAIL_COUNT" -gt 0 ]; then
-        exit 1
-    fi
-    exit 0
+    print_results
 }
 
 main "$@"

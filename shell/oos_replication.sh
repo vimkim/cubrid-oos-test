@@ -15,29 +15,21 @@
 # Usage: bash oos_replication.sh [master_host] [slave_host]
 #
 
-set -u
+DB_NAME="oos_repl_test"
+LOG_FILE="oos_replication_$(date +%Y%m%d_%H%M%S).log"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 # ============================================================================
-# Configuration
+# Replication-specific configuration & helpers
 # ============================================================================
 
 MASTER_HOST="${1:-localhost}"
 SLAVE_HOST="${2:-localhost}"
-DB_NAME="oos_repl_test"
 MASTER_PORT=33000
 SLAVE_PORT=33001
 REPL_WAIT_SEC=5
-LOG_FILE="oos_replication_$(date +%Y%m%d_%H%M%S).log"
-PASS_COUNT=0
-FAIL_COUNT=0
-
-# ============================================================================
-# Helper functions
-# ============================================================================
-
-log_msg() {
-    echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"
-}
 
 run_sql_master() {
     csql -u dba "$DB_NAME" -c "$1" 2>&1
@@ -50,20 +42,6 @@ run_sql_slave() {
 wait_for_replication() {
     log_msg "Waiting ${REPL_WAIT_SEC}s for replication to propagate..."
     sleep "$REPL_WAIT_SEC"
-}
-
-assert_contains() {
-    local desc="$1"
-    local expected_substr="$2"
-    local actual="$3"
-
-    if echo "$actual" | grep -q "$expected_substr"; then
-        log_msg "PASS: $desc"
-        PASS_COUNT=$((PASS_COUNT + 1))
-    else
-        log_msg "FAIL: $desc (expected to contain '$expected_substr', got '$actual')"
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-    fi
 }
 
 assert_row_count_eq() {
@@ -303,14 +281,7 @@ main() {
     test_bulk_replication
     test_multi_col_update_replication
 
-    log_msg "======================================"
-    log_msg "Results: PASS=$PASS_COUNT, FAIL=$FAIL_COUNT"
-    log_msg "======================================"
-
-    if [ "$FAIL_COUNT" -gt 0 ]; then
-        exit 1
-    fi
-    exit 0
+    print_results
 }
 
 main "$@"
