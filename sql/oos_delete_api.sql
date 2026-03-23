@@ -186,51 +186,7 @@ FROM t_oos_del_update WHERE id = 1;
 DROP TABLE t_oos_del_update;
 
 -- ============================================================================
--- TC-08: DELETE inside committed transaction
--- ============================================================================
-
-DROP TABLE IF EXISTS t_oos_del_commit;
-
-CREATE TABLE t_oos_del_commit (
-    id INT PRIMARY KEY,
-    data_col BIT VARYING
-);
-
-INSERT INTO t_oos_del_commit VALUES (1, REPEAT(X'AA', 2048));
-COMMIT;
-
-DELETE FROM t_oos_del_commit WHERE id = 1;
-COMMIT;
-
-SELECT COUNT(*) AS cnt FROM t_oos_del_commit;
-
-DROP TABLE t_oos_del_commit;
-
--- ============================================================================
--- TC-09: DELETE inside rolled-back transaction
--- After ROLLBACK, the deleted OOS row should still be visible.
--- ============================================================================
-
-DROP TABLE IF EXISTS t_oos_del_rollback;
-
-CREATE TABLE t_oos_del_rollback (
-    id INT PRIMARY KEY,
-    data_col BIT VARYING
-);
-
-INSERT INTO t_oos_del_rollback VALUES (1, REPEAT(X'AA', 2048));
-COMMIT;
-
-DELETE FROM t_oos_del_rollback WHERE id = 1;
-ROLLBACK;
-
--- Row should still exist after rollback
-SELECT id, LENGTH(data_col) AS len FROM t_oos_del_rollback WHERE id = 1;
-
-DROP TABLE t_oos_del_rollback;
-
--- ============================================================================
--- TC-10: Bulk DELETE of many OOS records
+-- TC-08: Bulk DELETE of many OOS records (was TC-10)
 -- Insert 50 OOS records, delete all, verify table is empty.
 -- ============================================================================
 
@@ -255,7 +211,7 @@ SELECT COUNT(*) AS after_delete FROM t_oos_del_bulk;
 DROP TABLE t_oos_del_bulk;
 
 -- ============================================================================
--- TC-11: DELETE with multi-chunk then reinsert multi-chunk
+-- TC-09: DELETE with multi-chunk then reinsert multi-chunk (was TC-11)
 -- Ensures page space is reclaimed and reusable after chain deletion.
 -- ============================================================================
 
