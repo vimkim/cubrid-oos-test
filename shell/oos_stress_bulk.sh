@@ -19,7 +19,7 @@ DB_VOL_SIZE="1G"
 DB_LOG_SIZE="512M"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ============================================================================
 # TC-01: Bulk INSERT of 1000 OOS records with varying sizes

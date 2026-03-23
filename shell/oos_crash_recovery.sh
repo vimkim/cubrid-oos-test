@@ -18,7 +18,7 @@ DB_NAME="oos_recovery_test"
 LOG_FILE="oos_crash_recovery_$(date +%Y%m%d_%H%M%S).log"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ============================================================================
 # TC-01: Committed OOS data survives crash (REDO recovery)

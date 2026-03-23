@@ -2,8 +2,8 @@
 
 ## Structure
 
-- `common.sh` — shared helpers sourced by all test scripts (inspired by CTP `init_path/init.sh`)
 - `oos_*.sh` — individual test scripts
+- `../lib/common.sh` — shared helpers sourced by all test scripts (inspired by CTP `init_path/init.sh`)
 
 ## Writing a New Test Script
 
@@ -13,7 +13,7 @@ DB_NAME="oos_my_test"
 LOG_FILE="oos_my_test_$(date +%Y%m%d_%H%M%S).log"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ... test functions using helpers from common.sh ...
 

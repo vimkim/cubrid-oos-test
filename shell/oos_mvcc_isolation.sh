@@ -17,7 +17,7 @@ DB_NAME="${1:-testdb}"
 LOG_FILE="oos_mvcc_isolation_$(date +%Y%m%d_%H%M%S).log"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ============================================================================
 # TC-01: Snapshot isolation - concurrent reader does not see uncommitted INSERT

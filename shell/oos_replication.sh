@@ -19,7 +19,7 @@ DB_NAME="oos_repl_test"
 LOG_FILE="oos_replication_$(date +%Y%m%d_%H%M%S).log"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ============================================================================
 # Replication-specific configuration & helpers
