@@ -47,17 +47,25 @@ sql-golden:
     set -u
     mkdir -p "{{test_dir}}/sql/answer"
     PASS=0; FAIL=0
+    strip_time() { sed -E 's/\([0-9]+\.[0-9]+ sec\)//g'; }
+    diff_cmd() {
+        if command -v delta > /dev/null 2>&1; then
+            delta "$1" "$2"
+        else
+            diff -u "$1" "$2"
+        fi
+    }
     for f in "{{test_dir}}"/sql/*.sql; do
         name=$(basename "$f" .sql)
         answer="{{test_dir}}/sql/answer/${name}.answer"
-        actual=$(csql -u dba "{{db}}" -i "$f" 2>&1)
+        actual=$(csql -u dba "{{db}}" -i "$f" 2>&1 | strip_time)
         if [ -f "$answer" ]; then
             if diff <(echo "$actual") "$answer" > /dev/null 2>&1; then
                 echo "PASS: $name (matches golden)"
                 PASS=$((PASS + 1))
             else
                 echo "FAIL: $name (output differs from golden)"
-                diff <(echo "$actual") "$answer" | head -20
+                diff_cmd <(echo "$actual") "$answer"
                 FAIL=$((FAIL + 1))
             fi
         else

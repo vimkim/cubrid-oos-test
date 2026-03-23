@@ -7,6 +7,8 @@ Designed to run from any CUBRID OOS worktree via `just oos <command>`.
 
 ```
 ├── oos.just          # justfile module (imported by worktree justfiles)
+├── lib/
+│   └── common.sh     # shared helpers sourced by shell tests
 ├── sql/              # SQL-based tests (run via csql)
 │   ├── oos_basic_crud.sql
 │   ├── oos_boundary_edge.sql
