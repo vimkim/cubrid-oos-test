@@ -10,6 +10,7 @@
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_del_commit;
+COMMIT;
 
 CREATE TABLE t_oos_del_commit (
     id INT PRIMARY KEY,
@@ -25,6 +26,7 @@ COMMIT;
 SELECT COUNT(*) AS cnt FROM t_oos_del_commit;
 
 DROP TABLE t_oos_del_commit;
+COMMIT;
 
 -- ============================================================================
 -- TC-02: DELETE inside rolled-back transaction
@@ -32,6 +34,7 @@ DROP TABLE t_oos_del_commit;
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_del_rollback;
+COMMIT;
 
 CREATE TABLE t_oos_del_rollback (
     id INT PRIMARY KEY,
@@ -48,3 +51,4 @@ ROLLBACK;
 SELECT id, LENGTH(data_col) AS len FROM t_oos_del_rollback WHERE id = 1;
 
 DROP TABLE t_oos_del_rollback;
+COMMIT;

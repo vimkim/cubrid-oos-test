@@ -20,7 +20,11 @@ sql:
         TOTAL=$((TOTAL + 1))
         name=$(basename "$f")
         echo "=== [$TOTAL] $name ==="
-        output=$(csql -u dba "{{db}}" -i "$f" 2>&1)
+        csql_flags=""
+        if [[ "$name" == *_txn.sql ]]; then
+            csql_flags="--no-auto-commit"
+        fi
+        output=$(csql -u dba $csql_flags "{{db}}" -i "$f" 2>&1)
         rc=$?
         if [ $rc -ne 0 ] || echo "$output" | grep -qi "ERROR"; then
             echo "FAIL: $name (exit=$rc)"
@@ -39,7 +43,13 @@ sql:
 
 # run a single SQL test file by name (e.g. just oos sql-one oos_basic_crud)
 sql-one name:
-    csql -u dba "{{db}}" -i "{{test_dir}}/sql/{{name}}.sql"
+    #!/usr/bin/env bash
+    set -u
+    csql_flags=""
+    if [[ "{{name}}" == *_txn ]]; then
+        csql_flags="--no-auto-commit"
+    fi
+    csql -u dba $csql_flags "{{db}}" -i "{{test_dir}}/sql/{{name}}.sql"
 
 # run SQL tests with output capture for diff-based validation
 sql-golden:
@@ -58,7 +68,11 @@ sql-golden:
     for f in "{{test_dir}}"/sql/*.sql; do
         name=$(basename "$f" .sql)
         answer="{{test_dir}}/sql/answer/${name}.answer"
-        actual=$(csql -u dba "{{db}}" -i "$f" 2>&1 | strip_time)
+        csql_flags=""
+        if [[ "$name" == *_txn ]]; then
+            csql_flags="--no-auto-commit"
+        fi
+        actual=$(csql -u dba $csql_flags "{{db}}" -i "$f" 2>&1 | strip_time)
         if [ -f "$answer" ]; then
             if diff <(echo "$actual") "$answer" > /dev/null 2>&1; then
                 echo "PASS: $name (matches golden)"

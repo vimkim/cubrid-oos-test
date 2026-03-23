@@ -4,7 +4,7 @@
 -- CBRD-26609: implement OOS delete API
 -- Tests: DELETE single-chunk OOS, DELETE multi-chunk OOS, DELETE + reinsert,
 --        DELETE multiple rows, DELETE with mixed OOS/non-OOS columns,
---        UPDATE OOS column, bulk DELETE, multi-chunk reinsert
+--        DELETE in transaction (commit/rollback)
 --
 
 -- ============================================================================
@@ -12,6 +12,8 @@
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_delete_api;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-01: DELETE a single-chunk OOS record
@@ -24,15 +26,41 @@ CREATE TABLE t_oos_delete_api (
     data_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_delete_api VALUES (1, 'single_chunk', REPEAT(X'AA', 1024));
+
+1 row affected.  Committed.  
 
 SELECT id, label, LENGTH(data_col) AS len FROM t_oos_delete_api WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 29> ===
+
+           id  label                         len
+================================================
+            1  'single_chunk'               2048
+
+1 row selected.  Committed.  
+
 DELETE FROM t_oos_delete_api WHERE id = 1;
+
+1 row affected.  Committed.  
 
 SELECT COUNT(*) AS cnt FROM t_oos_delete_api WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 33> ===
+
+                   cnt
+======================
+                     0
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_delete_api;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-02: DELETE a multi-chunk OOS record (32KB, spans multiple OOS pages)
@@ -40,20 +68,48 @@ DROP TABLE t_oos_delete_api;
 
 DROP TABLE IF EXISTS t_oos_del_multi;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_multi (
     id INT PRIMARY KEY,
     huge_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_del_multi VALUES (1, REPEAT(X'BB', 32768));
+
+1 row affected.  Committed.  
 
 SELECT id, LENGTH(huge_col) AS len FROM t_oos_del_multi WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 50> ===
+
+           id          len
+==========================
+            1        65536
+
+1 row selected.  Committed.  
+
 DELETE FROM t_oos_del_multi WHERE id = 1;
+
+1 row affected.  Committed.  
 
 SELECT COUNT(*) AS cnt FROM t_oos_del_multi WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 54> ===
+
+                   cnt
+======================
+                     0
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_del_multi;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-03: DELETE a very large multi-chunk OOS record (160KB)
@@ -62,20 +118,48 @@ DROP TABLE t_oos_del_multi;
 
 DROP TABLE IF EXISTS t_oos_del_160k;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_160k (
     id INT PRIMARY KEY,
     big_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_del_160k VALUES (1, REPEAT(X'CC', 163840));
+
+1 row affected.  Committed.  
 
 SELECT id, LENGTH(big_col) AS len FROM t_oos_del_160k WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 72> ===
+
+           id          len
+==========================
+            1       327680
+
+1 row selected.  Committed.  
+
 DELETE FROM t_oos_del_160k WHERE id = 1;
+
+1 row affected.  Committed.  
 
 SELECT COUNT(*) AS cnt FROM t_oos_del_160k;
 
+
+=== <Result of SELECT Command in Line 76> ===
+
+                   cnt
+======================
+                     0
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_del_160k;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-04: DELETE one row among multiple OOS rows (other rows unaffected)
@@ -83,23 +167,47 @@ DROP TABLE t_oos_del_160k;
 
 DROP TABLE IF EXISTS t_oos_del_selective;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_selective (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_del_selective VALUES (1, REPEAT(X'AA', 1024));
+
+1 row affected.  Committed.  
 INSERT INTO t_oos_del_selective VALUES (2, REPEAT(X'BB', 2048));
+
+1 row affected.  Committed.  
 INSERT INTO t_oos_del_selective VALUES (3, REPEAT(X'CC', 4096));
 
+1 row affected.  Committed.  
+
 DELETE FROM t_oos_del_selective WHERE id = 2;
+
+1 row affected.  Committed.  
 
 -- Remaining rows must be intact
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_del_selective ORDER BY id;
 
+
+=== <Result of SELECT Command in Line 100> ===
+
+           id          len  prefix              
+================================================
+            1         2048  'aa'                
+            3         8192  'cc'                
+
+2 rows selected.  Committed.  
+
 DROP TABLE t_oos_del_selective;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-05: DELETE then reinsert into same table
@@ -108,27 +216,62 @@ DROP TABLE t_oos_del_selective;
 
 DROP TABLE IF EXISTS t_oos_del_reinsert;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_reinsert (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_del_reinsert VALUES (1, REPEAT(X'AA', 2048));
+
+1 row affected.  Committed.  
 INSERT INTO t_oos_del_reinsert VALUES (2, REPEAT(X'BB', 4096));
+
+1 row affected.  Committed.  
 
 DELETE FROM t_oos_del_reinsert;
 
+2 rows affected.  Committed.  
+
 SELECT COUNT(*) AS cnt_after_delete FROM t_oos_del_reinsert;
+
+
+=== <Result of SELECT Command in Line 121> ===
+
+      cnt_after_delete
+======================
+                     0
+
+1 row selected.  Committed.  
 
 -- Reinsert
 INSERT INTO t_oos_del_reinsert VALUES (10, REPEAT(X'DD', 2048));
+
+1 row affected.  Committed.  
 INSERT INTO t_oos_del_reinsert VALUES (20, REPEAT(X'EE', 8192));
+
+1 row affected.  Committed.  
 
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_del_reinsert ORDER BY id;
 
+
+=== <Result of SELECT Command in Line 129> ===
+
+           id          len  prefix              
+================================================
+           10         4096  'dd'                
+           20        16384  'ee'                
+
+2 rows selected.  Committed.  
+
 DROP TABLE t_oos_del_reinsert;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-06: DELETE row with mixed OOS and non-OOS columns
@@ -137,6 +280,8 @@ DROP TABLE t_oos_del_reinsert;
 
 DROP TABLE IF EXISTS t_oos_del_mixed;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_mixed (
     id INT PRIMARY KEY,
     small_col VARCHAR(100),
@@ -144,18 +289,46 @@ CREATE TABLE t_oos_del_mixed (
     oos_col2 BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_del_mixed VALUES (1, 'keep_me', REPEAT(X'AA', 1024), REPEAT(X'BB', 2048));
+
+1 row affected.  Committed.  
 INSERT INTO t_oos_del_mixed VALUES (2, 'delete_me', REPEAT(X'CC', 4096), REPEAT(X'DD', 8192));
 
+1 row affected.  Committed.  
+
 DELETE FROM t_oos_del_mixed WHERE id = 2;
+
+1 row affected.  Committed.  
 
 -- Row 1 must be unaffected
 SELECT id, small_col, LENGTH(oos_col1) AS len1, LENGTH(oos_col2) AS len2
 FROM t_oos_del_mixed ORDER BY id;
 
+
+=== <Result of SELECT Command in Line 154> ===
+
+           id  small_col                    len1         len2
+=============================================================
+            1  'keep_me'                    2048         4096
+
+1 row selected.  Committed.  
+
 SELECT COUNT(*) AS total FROM t_oos_del_mixed;
 
+
+=== <Result of SELECT Command in Line 156> ===
+
+                 total
+======================
+                     1
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_del_mixed;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-07: UPDATE OOS column (simulates insert-new + delete-old pattern)
@@ -165,25 +338,53 @@ DROP TABLE t_oos_del_mixed;
 
 DROP TABLE IF EXISTS t_oos_del_update;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_update (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 INSERT INTO t_oos_del_update VALUES (1, REPEAT(X'AA', 2048));
+
+1 row affected.  Committed.  
 
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_del_update WHERE id = 1;
+
+
+=== <Result of SELECT Command in Line 177> ===
+
+           id          len  prefix              
+================================================
+            1         4096  'aa'                
+
+1 row selected.  Committed.  
 
 -- UPDATE replaces OOS value; old OOS record should be deleted
 UPDATE t_oos_del_update SET data_col = REPEAT(X'FF', 4096) WHERE id = 1;
 
+1 row affected.  Committed.  
+
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_del_update WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 184> ===
+
+           id          len  prefix              
+================================================
+            1         8192  'ff'                
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_del_update;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-08: Bulk DELETE of many OOS records (was TC-10)
@@ -192,23 +393,51 @@ DROP TABLE t_oos_del_update;
 
 DROP TABLE IF EXISTS t_oos_del_bulk;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_bulk (
     id INT PRIMARY KEY AUTO_INCREMENT,
     data_col BIT VARYING
 );
+
+Execute OK.  Committed.  
 
 INSERT INTO t_oos_del_bulk (data_col)
     SELECT REPEAT(X'EE', 1024 + (ROWNUM * 20))
     FROM db_class a, db_class b
     LIMIT 50;
 
+50 rows affected.  Committed.  
+
 SELECT COUNT(*) AS before_delete FROM t_oos_del_bulk;
+
+
+=== <Result of SELECT Command in Line 205> ===
+
+         before_delete
+======================
+                    50
+
+1 row selected.  Committed.  
 
 DELETE FROM t_oos_del_bulk;
 
+50 rows affected.  Committed.  
+
 SELECT COUNT(*) AS after_delete FROM t_oos_del_bulk;
 
+
+=== <Result of SELECT Command in Line 209> ===
+
+          after_delete
+======================
+                     0
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_del_bulk;
+
+Execute OK.  Committed.  
 
 -- ============================================================================
 -- TC-09: DELETE with multi-chunk then reinsert multi-chunk (was TC-11)
@@ -217,23 +446,53 @@ DROP TABLE t_oos_del_bulk;
 
 DROP TABLE IF EXISTS t_oos_del_reuse;
 
+Execute OK.  Committed.  
+
 CREATE TABLE t_oos_del_reuse (
     id INT PRIMARY KEY,
     big_col BIT VARYING
 );
 
+Execute OK.  Committed.  
+
 -- Insert 64KB multi-chunk record
 INSERT INTO t_oos_del_reuse VALUES (1, REPEAT(X'AA', 65536));
 
+1 row affected.  Committed.  
+
 SELECT id, LENGTH(big_col) AS len FROM t_oos_del_reuse;
+
+
+=== <Result of SELECT Command in Line 228> ===
+
+           id          len
+==========================
+            1       131072
+
+1 row selected.  Committed.  
 
 DELETE FROM t_oos_del_reuse WHERE id = 1;
 
+1 row affected.  Committed.  
+
 -- Reinsert another large record (should reuse freed pages)
 INSERT INTO t_oos_del_reuse VALUES (2, REPEAT(X'BB', 65536));
+
+1 row affected.  Committed.  
 
 SELECT id, LENGTH(big_col) AS len,
        SUBSTRING(big_col FROM 1 FOR 2) AS prefix
 FROM t_oos_del_reuse;
 
+
+=== <Result of SELECT Command in Line 237> ===
+
+           id          len  prefix              
+================================================
+            2       131072  'bb'                
+
+1 row selected.  Committed.  
+
 DROP TABLE t_oos_del_reuse;
+
+Execute OK.  Committed.  
