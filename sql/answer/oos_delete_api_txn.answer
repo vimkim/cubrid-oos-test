@@ -1,0 +1,108 @@
+--
+-- OOS Delete API Transaction Tests (requires --no-auto-commit)
+--
+-- CBRD-26609: implement OOS delete API
+-- Tests: DELETE inside committed transaction, DELETE inside rolled-back transaction
+--
+
+-- ============================================================================
+-- TC-01: DELETE inside committed transaction
+-- ============================================================================
+
+DROP TABLE IF EXISTS t_oos_del_commit;
+
+Execute OK.  
+COMMIT;
+
+Execute OK.  
+
+CREATE TABLE t_oos_del_commit (
+    id INT PRIMARY KEY,
+    data_col BIT VARYING
+);
+
+Execute OK.  
+
+INSERT INTO t_oos_del_commit VALUES (1, REPEAT(X'AA', 2048));
+
+1 row affected.  
+COMMIT;
+
+Execute OK.  
+
+DELETE FROM t_oos_del_commit WHERE id = 1;
+
+1 row affected.  
+COMMIT;
+
+Execute OK.  
+
+SELECT COUNT(*) AS cnt FROM t_oos_del_commit;
+
+
+=== <Result of SELECT Command in Line 26> ===
+
+                   cnt
+======================
+                     0
+
+1 row selected.  
+
+DROP TABLE t_oos_del_commit;
+
+Execute OK.  
+COMMIT;
+
+Execute OK.  
+
+-- ============================================================================
+-- TC-02: DELETE inside rolled-back transaction
+-- After ROLLBACK, the deleted OOS row should still be visible.
+-- ============================================================================
+
+DROP TABLE IF EXISTS t_oos_del_rollback;
+
+Execute OK.  
+COMMIT;
+
+Execute OK.  
+
+CREATE TABLE t_oos_del_rollback (
+    id INT PRIMARY KEY,
+    data_col BIT VARYING
+);
+
+Execute OK.  
+
+INSERT INTO t_oos_del_rollback VALUES (1, REPEAT(X'AA', 2048));
+
+1 row affected.  
+COMMIT;
+
+Execute OK.  
+
+DELETE FROM t_oos_del_rollback WHERE id = 1;
+
+1 row affected.  
+ROLLBACK;
+
+Execute OK.  
+
+-- Row should still exist after rollback
+SELECT id, LENGTH(data_col) AS len FROM t_oos_del_rollback WHERE id = 1;
+
+
+=== <Result of SELECT Command in Line 51> ===
+
+           id          len
+==========================
+            1         4096
+
+1 row selected.  
+
+DROP TABLE t_oos_del_rollback;
+
+Execute OK.  
+COMMIT;
+
+Execute OK.  

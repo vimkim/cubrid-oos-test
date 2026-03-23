@@ -15,43 +15,99 @@
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_txn;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 CREATE TABLE t_oos_txn (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
+
+Execute OK.  
 COMMIT;
 
+Execute OK.  
+
 INSERT INTO t_oos_txn VALUES (1, REPEAT(X'AA', 1024));
+
+1 row affected.  
 
 -- Verify row exists within transaction
 SELECT COUNT(*) AS in_txn_count FROM t_oos_txn;
 
+
+=== <Result of SELECT Command in Line 29> ===
+
+          in_txn_count
+======================
+                     1
+
+1 row selected.  
+
 ROLLBACK;
+
+Execute OK.  
 
 -- After rollback, row should not exist
 SELECT COUNT(*) AS after_rollback FROM t_oos_txn;
+
+
+=== <Result of SELECT Command in Line 34> ===
+
+        after_rollback
+======================
+                     0
+
+1 row selected.  
 
 -- ============================================================================
 -- TC-02: Atomicity - ROLLBACK cancels OOS UPDATE
 -- ============================================================================
 
 INSERT INTO t_oos_txn VALUES (1, REPEAT(X'AA', 1024));
+
+1 row affected.  
 COMMIT;
+
+Execute OK.  
 
 -- Now update in a new transaction and rollback
 UPDATE t_oos_txn SET data_col = REPEAT(X'BB', 2048) WHERE id = 1;
+
+1 row affected.  
 
 -- Within transaction, see updated value
 SELECT id, SUBSTRING(data_col FROM 1 FOR 2) AS prefix, LENGTH(data_col) AS len
 FROM t_oos_txn WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 48> ===
+
+           id  prefix                        len
+================================================
+            1  'bb'                         4096
+
+1 row selected.  
+
 ROLLBACK;
+
+Execute OK.  
 
 -- After rollback, original value should be restored
 SELECT id, SUBSTRING(data_col FROM 1 FOR 2) AS prefix, LENGTH(data_col) AS len
 FROM t_oos_txn WHERE id = 1;
+
+
+=== <Result of SELECT Command in Line 54> ===
+
+           id  prefix                        len
+================================================
+            1  'aa'                         2048
+
+1 row selected.  
 
 -- ============================================================================
 -- TC-03: Durability - committed OOS data persists
@@ -59,26 +115,54 @@ FROM t_oos_txn WHERE id = 1;
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_durable;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 CREATE TABLE t_oos_durable (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 INSERT INTO t_oos_durable VALUES (1, REPEAT(X'DD', 2048));
+
+1 row affected.  
 INSERT INTO t_oos_durable VALUES (2, REPEAT(X'EE', 4096));
 
+1 row affected.  
+
 COMMIT;
+
+Execute OK.  
 
 -- After commit, data should be visible
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_durable ORDER BY id;
 
+
+=== <Result of SELECT Command in Line 78> ===
+
+           id          len  prefix              
+================================================
+            1         4096  'dd'                
+            2         8192  'ee'                
+
+2 rows selected.  
+
 DROP TABLE t_oos_durable;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 -- ============================================================================
 -- TC-04: Isolation - MVCC snapshot prevents dirty reads
@@ -88,114 +172,245 @@ COMMIT;
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_isolation;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 CREATE TABLE t_oos_isolation (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
 
+Execute OK.  
+
 INSERT INTO t_oos_isolation VALUES (1, REPEAT(X'AA', 1024));
+
+1 row affected.  
 COMMIT;
+
+Execute OK.  
 
 -- Verify baseline
 SELECT COUNT(*) AS baseline FROM t_oos_isolation;
+
+
+=== <Result of SELECT Command in Line 102> ===
+
+              baseline
+======================
+                     1
+
+1 row selected.  
 COMMIT;
+
+Execute OK.  
 
 -- ============================================================================
 -- TC-05: Multi-chunk OOS in transaction with ROLLBACK
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_txn_multi;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 CREATE TABLE t_oos_txn_multi (
     id INT PRIMARY KEY,
     huge_col BIT VARYING
 );
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 -- Insert a 32KB multi-chunk record
 INSERT INTO t_oos_txn_multi VALUES (1, REPEAT(X'FF', 32768));
 
+1 row affected.  
+
 -- Verify within transaction
 SELECT id, LENGTH(huge_col) AS len FROM t_oos_txn_multi WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 122> ===
+
+           id          len
+==========================
+            1        65536
+
+1 row selected.  
+
 ROLLBACK;
+
+Execute OK.  
 
 -- After rollback, multi-chunk OOS should be cleaned up
 SELECT COUNT(*) AS after_rollback FROM t_oos_txn_multi;
 
+
+=== <Result of SELECT Command in Line 127> ===
+
+        after_rollback
+======================
+                     0
+
+1 row selected.  
+
 DROP TABLE t_oos_txn_multi;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 -- ============================================================================
 -- TC-06: INSERT + UPDATE + DELETE in single transaction then COMMIT
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_txn_combo;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 CREATE TABLE t_oos_txn_combo (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
+
+Execute OK.  
 COMMIT;
 
+Execute OK.  
+
 INSERT INTO t_oos_txn_combo VALUES (1, REPEAT(X'AA', 1024));
+
+1 row affected.  
 INSERT INTO t_oos_txn_combo VALUES (2, REPEAT(X'BB', 2048));
+
+1 row affected.  
 INSERT INTO t_oos_txn_combo VALUES (3, REPEAT(X'CC', 4096));
+
+1 row affected.  
 
 -- Update row 2
 UPDATE t_oos_txn_combo SET data_col = REPEAT(X'DD', 1024) WHERE id = 2;
 
+1 row affected.  
+
 -- Delete row 1
 DELETE FROM t_oos_txn_combo WHERE id = 1;
 
+1 row affected.  
+
 COMMIT;
+
+Execute OK.  
 
 -- After commit: row 1 gone, row 2 updated, row 3 unchanged
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_txn_combo ORDER BY id;
 
+
+=== <Result of SELECT Command in Line 160> ===
+
+           id          len  prefix              
+================================================
+            2         2048  'dd'                
+            3         8192  'cc'                
+
+2 rows selected.  
+
 DROP TABLE t_oos_txn_combo;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 -- ============================================================================
 -- TC-07: ROLLBACK after DELETE of OOS record restores visibility
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_txn_del_rb;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 CREATE TABLE t_oos_txn_del_rb (
     id INT PRIMARY KEY,
     data_col BIT VARYING
 );
 
+Execute OK.  
+
 INSERT INTO t_oos_txn_del_rb VALUES (1, REPEAT(X'AA', 1024));
+
+1 row affected.  
 COMMIT;
 
+Execute OK.  
+
 DELETE FROM t_oos_txn_del_rb WHERE id = 1;
+
+1 row affected.  
 
 -- Within transaction, row is deleted
 SELECT COUNT(*) AS during_delete FROM t_oos_txn_del_rb;
 
+
+=== <Result of SELECT Command in Line 183> ===
+
+         during_delete
+======================
+                     0
+
+1 row selected.  
+
 ROLLBACK;
+
+Execute OK.  
 
 -- After rollback, row should be visible again with original data
 SELECT id, LENGTH(data_col) AS len,
        SUBSTRING(data_col FROM 1 FOR 2) AS prefix
 FROM t_oos_txn_del_rb WHERE id = 1;
 
+
+=== <Result of SELECT Command in Line 190> ===
+
+           id          len  prefix              
+================================================
+            1         2048  'aa'                
+
+1 row selected.  
+
 DROP TABLE t_oos_txn_del_rb;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  
 
 -- ============================================================================
 -- Cleanup
 -- ============================================================================
 
 DROP TABLE IF EXISTS t_oos_txn;
+
+Execute OK.  
 DROP TABLE IF EXISTS t_oos_isolation;
+
+Execute OK.  
 COMMIT;
+
+Execute OK.  

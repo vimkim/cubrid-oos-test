@@ -4,7 +4,7 @@
 -- CBRD-26609: implement OOS delete API
 -- Tests: DELETE single-chunk OOS, DELETE multi-chunk OOS, DELETE + reinsert,
 --        DELETE multiple rows, DELETE with mixed OOS/non-OOS columns,
---        DELETE in transaction (commit/rollback)
+--        UPDATE OOS column, bulk DELETE, multi-chunk reinsert
 --
 
 -- ============================================================================
