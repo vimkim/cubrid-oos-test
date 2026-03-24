@@ -60,7 +60,7 @@ sql-golden:
     strip_time() { sed -E 's/\([0-9]+\.[0-9]+ sec\)//g'; }
     diff_cmd() {
         if command -v delta > /dev/null 2>&1; then
-            delta "$1" "$2"
+            delta --paging=never "$1" "$2"
         else
             diff -u "$1" "$2"
         fi
