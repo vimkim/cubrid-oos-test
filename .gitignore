@@ -1,2 +1,7 @@
 .omc
 .claude
+
+# test run artifacts
+*.log
+csql.err
+core.*
